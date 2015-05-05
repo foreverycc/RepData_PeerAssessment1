@@ -1,0 +1,79 @@
+---
+title: "Assignment1"
+author: "Chenchen"
+date: "April 11, 2015"
+output: html_document
+---
+  
+##Loading and preprocessing the data
+```{r, echo=TRUE}
+Data = read.csv("../data/activity.csv")
+Data$date_fac = as.Date(Data$date)
+Data_NARM = Data[complete.cases(Data), ]
+head(Data_NARM)
+```
+
+##What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+Data_NARM_SumByDay = aggregate(Data_NARM$steps, by = list(Data_NARM$date_fac), sum)
+names(Data_NARM_SumByDay) = c("date", "steps")
+hist(Data_NARM_SumByDay$steps, breaks = 20, 
+     main = "Histogram of Total Steps by Day",
+     xlab = "Total Steps Per Day")
+# mean total steps per day
+mean(Data_NARM_SumByDay$steps)
+# median total steps per day
+median(Data_NARM_SumByDay$steps)
+```
+
+##What is the average daily activity pattern?
+```{r, echo=TRUE}
+Data_NARM_AvgByInterval = aggregate(Data_NARM$steps, by = list(Data_NARM$interval), mean)
+names(Data_NARM_AvgByInterval) = c("interval", "steps_avg")
+plot(Data_NARM_AvgByInterval$interval, Data_NARM_AvgByInterval$steps_avg,
+     main = "Average Steps by Interval", type = "l", 
+     xlab = "Time Interval", ylab = "Average Steps")
+```
+```{r, echo=TRUE}
+# The interval that contains the maximum number of steps
+as.numeric(as.character(Data_NARM_AvgByInterval[which.max(Data_NARM_AvgByInterval$steps_avg), "interval"]))
+```
+
+##Imputing missing values
+```{r, echo=TRUE}
+# calculate total NAs
+sum(is.na(Data$steps))
+
+# impute missing values by average steps of the interval
+Data_Impute = Data
+for (i in 1:nrow(Data_Impute)) {
+  if (is.na (Data_Impute$steps[i])) {
+    interval_index = which (Data_NARM_AvgByInterval$interval == Data_Impute$interval[i])
+    Data_Impute$steps[i] = round(Data_NARM_AvgByInterval$steps_avg[interval_index], 0)
+  } else next
+}
+head(Data_Impute)
+```
+Make histograms and calculate average and median sum steps per day
+```{r, echo=TRUE}
+Data_Impute_SumByDay = aggregate(Data_Impute$steps, by = list(Data_Impute$date_fac), sum)
+names(Data_Impute_SumByDay) = c("date", "steps")
+hist(Data_Impute_SumByDay$steps, breaks = 20, 
+     main = "Histogram of Total Steps by Day",
+     xlab = "Total Steps Per Day")
+# mean total steps per day
+mean(Data_Impute_SumByDay$steps)
+# median total steps per day
+median(Data_Impute_SumByDay$steps)
+```
+##Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE}
+# make a new variable of weekday and weekend 
+Data_Impute$weekday = weekdays(as.Date(Data_Impute$date))
+Data_Impute$day_level = factor (ifelse(Data_Impute$weekday %in% c("Saturday", "Sunday"), "weekend", "weekday"))
+Data_Impute_AvgByInterval = aggregate(Data_Impute$steps, by = list(Data_Impute$day_level, Data_Impute$interval), mean)
+names(Data_Impute_AvgByInterval) = c("day_level", "interval", "steps")
+# make plots
+library(lattice)
+xyplot(Data_Impute_AvgByInterval$steps~Data_Impute_AvgByInterval$interval|Data_Impute_AvgByInterval$day_level, type = "l", scales = list(x = list(tick.number =4)), layout = c(1,2), xlab = "Interval", ylab = "Average Steps", main = "Average Steps by Intervals")
+```
